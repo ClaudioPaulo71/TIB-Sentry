@@ -1,0 +1,21 @@
+# Ambientes Virtuais
+venv/
+env/
+.venv/
+
+# Python (Arquivos temporários e compilados)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Banco de Dados (Mantém seus dados de Illinois privados)
+*.db
+*.sqlite3
+
+# Configurações de IDE
+.vscode/
+.idea/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
