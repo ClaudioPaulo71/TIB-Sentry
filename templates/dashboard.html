@@ -7,17 +7,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         /* Base e Background */
-        body { background-color: #0d1117; color: #f0f6fc; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .navbar { background-color: #161b22; border-bottom: 2px solid #00d4ff; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        body { background-color: #303a47; color: #b5b8bb; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar { background-color: #646970; border-bottom: 2px solid #9c4e20; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         
         /* Cards de Resumo */
-        .card { background-color: #1c2128; border: 1px solid #30363d; border-radius: 12px; transition: all 0.3s; }
-        .card:hover { border-color: #00d4ff; transform: translateY(-2px); }
-        .card h6 { color: #00d4ff !important; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; }
+        .card { background-color: #1c2128; border: 1px solid #687474; border-radius: 12px; transition: all 0.3s; }
+        .card:hover { border-color: #b4551e; transform: translateY(-2px); }
+        .card h6 { color: #7cada7 !important; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; }
         
         /* Tabela Profissional */
         .table { color: #f0f6fc; vertical-align: middle; }
-        .table thead th { background-color: #21262d; color: #00d4ff; text-transform: uppercase; font-size: 0.8rem; border: none; padding: 15px; }
+        .table thead th { background-color: #21262d; color: #94cab3; text-transform: uppercase; font-size: 0.8rem; border: none; padding: 15px; }
         .table-hover tbody tr:hover { background-color: #262c36 !important; }
         
         /* Inputs e Selects Customizados */
@@ -27,16 +27,16 @@
             border: 1px solid #30363d !important;
             font-size: 0.85rem;
         }
-        .form-control-custom:focus { border-color: #00d4ff !important; box-shadow: 0 0 5px rgba(0, 212, 255, 0.3); }
+        .form-control-custom:focus { border-color: #59d4ca !important; box-shadow: 0 0 5px rgba(81, 157, 160, 0.3); }
 
         /* Status Neon */
-        .status-known { color: #39ff14; font-weight: bold; text-shadow: 0 0 8px rgba(57, 255, 20, 0.3); }
-        .status-unknown { color: #ffea00; font-weight: bold; text-shadow: 0 0 8px rgba(255, 234, 0, 0.3); }
+        .status-known { color: #e68f48; font-weight: bold; text-shadow: 0 0 8px rgba(46, 192, 143, 0.3); }
+        .status-unknown { color: #ff8800; font-weight: bold; text-shadow: 0 0 8px rgba(175, 123, 55, 0.3); }
         .status-rogue { color: #ff3131; font-weight: bold; text-shadow: 0 0 8px rgba(255, 49, 49, 0.3); }
 
-        code { color: #00d4ff; background: rgba(0, 212, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; }
-        .btn-save { background-color: transparent; border: 1px solid #00d4ff; color: #00d4ff; transition: 0.3s; }
-        .btn-save:hover { background-color: #00d4ff; color: #0d1117; }
+        code { color: #45c79c; background: rgba(0, 212, 255, 0.1); padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; }
+        .btn-save { background-color: transparent; border: 1px solid #60d6d0; color: #6cbdb9e1; transition: 0.3s; }
+        .btn-save:hover { background-color: #42d4c8ab; color: #335152; }
     </style>
 </head>
 <body>
@@ -44,11 +44,23 @@
 <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container-fluid px-4">
         <a class="navbar-brand fw-bold" href="#">
-            <span style="color: #00d4ff;">TIB</span>-SENTRY <small class="text-muted fw-light">| Network Operations</small>
+            <span style="color: #78aaa87c;">TIB</span>-SENTRY <small class="text-muted fw-light">| Network Operations</small>
         </a>
-        <div class="text-muted">
+        <div class="text-muted col-md-3">
             <small>Illinois, USA | Operator: <strong>Claudio Paulo</strong></small>
         </div>
+        <div class="d-flex align-items-center mb-3">
+            {% if scanning %}
+        <div class="spinner-grow text-info spinner-grow-sm me-2" role="status"></div>
+        <span class="text-info fw-bold animate__animated animate__pulse animate__infinite">
+            Scanning Network...
+        </span>
+            {% else %}
+        <span class="text-muted small">
+            <i class="fas fa-check-circle text-success me-1"></i> System Ready
+        </span>
+            {% endif %}
+</div>
     </div>
 </nav>
 
@@ -82,8 +94,18 @@
 
     <div class="card p-4 shadow-lg mb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="fw-bold m-0" style="color: #00d4ff; letter-spacing: 1px;">GERENCIAMENTO DE ATIVOS DE REDE</h5>
-            <a href="{{ url_for('run_scan') }}" class="btn btn-sm btn-outline-info">⚡ Executar Nova Varredura</a>
+            <h5 class="fw-bold m-0" style="color: #53cfb0; letter-spacing: 1px;">GERENCIAMENTO DE ATIVOS DE REDE</h5>
+            <div class="btn-group">
+                {% if not scanning %}
+                    <a href="{{ url_for('run_scan') }}" class="btn btn-primary">
+                        <i class="fas fa-play me-1"></i> Iniciar Varredura
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('stop_scan') }}" class="btn btn-danger animate__animated animate__pulse animate__infinite">
+                        <i class="fas fa-stop me-1"></i> Parar Varredura
+                    </a>
+                {% endif %}
+            </div>
         </div>
         
         <div class="table-responsive">
@@ -131,5 +153,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{% if scanning %}
+<script>
+    // Recarrega a página a cada 5 segundos apenas enquanto estiver escaneando
+    setTimeout(function(){
+       window.location.reload();
+    }, 60000);
+</script>
+{% endif %}
 </body>
 </html>

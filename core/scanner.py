@@ -22,7 +22,7 @@ def get_hostname(ip):
         # Se falhar, retorna um marcador claro para o banco não se confundir
         return "Unknown_Host"
 
-def scan_network(network_range):
+def scan_network(network_range, status_ref=None):
     """Realiza a varredura ARP e coleta dados dos dispositivos."""
     print(f"[*] TIB-Sentry: Iniciando varredura em {network_range}")
     
@@ -54,5 +54,16 @@ def scan_network(network_range):
             'vendor': vendor
         })
         print(f"[+] Detectado: {ip} | {vendor} | {hostname}")
+
+    result = srp(packet, timeout=3, verbose=False)[0]
+    devices = []
+    
+    for sent, received in result:
+        # CHECK DE INTERRUPÇÃO:
+        if status_ref and status_ref.get("stop_requested"):
+            print("[!] Varredura interrompida pelo usuário.")
+            return [] # Retorna lista vazia para não bagunçar o banco
+            
+        # ... (resto da lógica de hostname e vendor) ...
     
     return devices
