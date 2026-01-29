@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TIB-Sentry | Enterprise Security</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         /* Base e Background */
         body { background-color: #303a47; color: #b5b8bb; font-family: 'Segoe UI', system-ui, sans-serif; }
@@ -22,7 +27,7 @@
         
         /* Inputs e Selects Customizados */
         .form-control-custom, .form-select-custom {
-            background-color: #0d1117 !important;
+            background-color: #7bb6b8 !important;
             color: #f0f6fc !important;
             border: 1px solid #30363d !important;
             font-size: 0.85rem;
@@ -64,6 +69,42 @@
     </div>
 </nav>
 
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 bg-dark border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-white mb-3">Resumo da Rede</h5>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-light"><i class="fas fa-desktop me-2"></i>Total Ativos:</span>
+                        <span class="fw-bold fs-5 text-white">{{ stats.critical + stats.warning + stats.safe + stats.unknown }}</span>
+                    </div>
+                    <hr class="border-secondary"> <div class="d-flex justify-content-between text-danger">
+                        <span><i class="fas fa-exclamation-triangle me-2"></i>Críticos:</span>
+                        <span class="fw-bold">{{ stats.critical }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-warning mt-2">
+                        <span><i class="fas fa-bell me-2"></i>Atenção:</span>
+                        <span class="fw-bold">{{ stats.warning }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card shadow-sm h-100 bg-dark border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title text-white">Distribuição de Risco</h5>
+                    
+                    <div style="height: 200px; width: 100%;">
+                        <canvas id="riskChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <div class="container-fluid px-4">
     <div class="row mb-4">
         <div class="col-md-3">
@@ -79,7 +120,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card p-3 shadow-sm border-start border-info border-4">
+            <div class="card p-3 shadow-sm">
                 <h6>Rede Monitorada</h6>
                 <h4 class="m-0 fw-bold text-info" style="margin-top: 5px !important;">192.168.1.0/24</h4>
             </div>
@@ -112,38 +153,76 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
-                        <th style="width: 250px;">Hostname / Apelido</th>
+                        <th style="width: 200px;">Hostname / Apelido</th>
+                        <th style="width: 50px;" class="text-center"><i class="fas fa-pen"></i></th>
                         <th>Endereço IP</th>
                         <th>MAC Address</th>
+                        <th>Open Ports</th>
+                        <th>Risk Level</th>
+                        <th>Actions</th>
                         <th>Fabricante (Vendor)</th>
                         <th>Classificação</th>
                         <th>Última Atividade</th>
-                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for asset in assets %}
                     <tr>
-                        <form action="{{ url_for('update_asset', id=asset.id) }}" method="POST">
-                            <td>
-                                <input type="text" name="hostname" value="{{ asset.hostname }}" 
-                                       class="form-control form-control-sm form-control-custom fw-bold">
-                            </td>
-                            <td><code>{{ asset.ip_address }}</code></td>
-                            <td><small class="text-muted">{{ asset.mac_address }}</small></td>
-                            <td><span class="badge bg-dark border border-secondary">{{ asset.vendor }}</span></td>
-                            <td>
-                                <select name="status" class="form-select form-select-sm form-select-custom status-{{ asset.status.lower() }}">
-                                    <option value="Unknown" {% if asset.status == 'Unknown' %}selected{% endif %}>Unknown</option>
-                                    <option value="Known" {% if asset.status == 'Known' %}selected{% endif %}>Authorized</option>
-                                    <option value="Rogue" {% if asset.status == 'Rogue' %}selected{% endif %}>Rogue</option>
-                                </select>
-                            </td>
-                            <td><small class="text-muted">{{ asset.last_seen.strftime('%H:%M:%S') }}</small></td>
-                            <td>
-                                <button type="submit" class="btn btn-sm btn-save px-3">Salvar</button>
-                            </td>
-                        </form>
+                        <td class="text-truncate" style="max-width: 200px;" title="{{ asset.hostname }}">
+                            <span class="fw-bold">{{ asset.hostname }}</span>
+                        </td>
+
+                        <td class="text-center">
+                            <button type="button" class="btn btn-link btn-sm p-0 text-secondary" 
+                                    data-bs-toggle="modal" data-bs-target="#modal-{{ asset.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+
+                        <td><code>{{ asset.ip_address }}</code></td>
+                        <td><small class="text-muted">{{ asset.mac_address }}</small></td>
+                        
+                        <td>
+                            {% if 'Pending' in asset.open_ports %}
+                                <span class="text-muted small">Pending...</span>
+                            {% else %}
+                                <small>{{ asset.open_ports|truncate(20) }}</small>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if asset.risk_level == 'CRITICAL' %}
+                                <span class="badge bg-danger">CRITICAL</span>
+                            {% elif asset.risk_level == 'WARNING' %}
+                                <span class="badge bg-warning text-dark">WARNING</span>
+                            {% elif asset.risk_level == 'SAFE' %}
+                                <span class="badge bg-success">SAFE</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ asset.risk_level }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <a href="{{ url_for('trigger_deep_scan', asset_id=asset.id) }}" class="btn btn-sm btn-outline-info" title="Run Deep Scan">
+                                <i class="fas fa-search-plus"></i> Audit
+                            </a>
+                        </td>
+
+                        <td><span class="badge bg-dark border border-secondary">{{ asset.vendor }}</span></td>
+                        
+                        <td>
+                            {% if asset.status == 'Unknown' %}
+                                <span class="status-unknown">Unknown</span>
+                            {% elif asset.status == 'Known' %}
+                                <span class="status-known">Authorized</span>
+                            {% else %}
+                                <span class="status-rogue">Rogue</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td>
+                            <small class="text-muted" style="font-size: 0.8em;">{{ asset.last_seen.strftime('%d/%m %H:%M') }}</small>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -152,15 +231,260 @@
     </div>
 </div>
 
+{% for asset in assets %}
+<div class="modal fade" id="modal-{{ asset.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg"> <div class="modal-content text-dark">
+            
+            <div class="modal-header">
+                <h5 class="modal-title">Gerenciar: {{ asset.ip_address }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="tab-{{ asset.id }}" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#edit-panel-{{ asset.id }}" type="button">Editar</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#history-panel-{{ asset.id }}" type="button">Histórico</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="edit-panel-{{ asset.id }}">
+                        <form action="{{ url_for('update_asset', asset_id=asset.id) }}" method="POST">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Hostname</label>
+                                    <input type="text" name="hostname" class="form-control" value="{{ asset.hostname }}">
+                                    <small class="text-muted">Nome amigável para identificar na rede.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Classificação</label>
+                                    <select name="status" class="form-select">
+                                        <option value="Unknown" {% if asset.status == 'Unknown' %}selected{% endif %}>Desconhecido</option>
+                                        <option value="Known" {% if asset.status == 'Known' %}selected{% endif %}>Autorizado (Known)</option>
+                                        <option value="Rogue" {% if asset.status == 'Rogue' %}selected{% endif %}>Intruso (Rogue)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="text-end mt-3">
+                                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="tab-pane fade" id="history-panel-{{ asset.id }}">
+                        {% if asset.audit_logs %}
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-sm table-striped border">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Risco</th>
+                                            <th>Portas</th>
+                                            <th>SO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for log in asset.audit_logs|sort(attribute='timestamp', reverse=True) %}
+                                        <tr>
+                                            <td>{{ log.timestamp.strftime('%d/%m %H:%M') }}</td>
+                                            <td>
+                                                {% if log.risk_level == 'CRITICAL' %}
+                                                    <span class="badge bg-danger">CRITICAL</span>
+                                                {% elif log.risk_level == 'WARNING' %}
+                                                    <span class="badge bg-warning text-dark">WARN</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">SAFE</span>
+                                                {% endif %}
+                                            </td>
+                                            <td style="font-size: 0.8em;">{{ log.open_ports }}</td>
+                                            <td style="font-size: 0.8em;">{{ log.detected_os }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light text-center border">
+                                Nenhuma auditoria registrada para este dispositivo.
+                                <br>Use o botão <strong>Audit</strong> na tabela principal.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+
 {% if scanning %}
+<div style="position: fixed; bottom: 20px; right: 20px; background: #6610f2; color: #fff; padding: 15px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+    <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+        <div>
+            <strong>Varredura Geral em Andamento...</strong><br>
+            <small>Procurando novos dispositivos.</small>
+        </div>
+    </div>
+</div>
+
 <script>
-    // Recarrega a página a cada 5 segundos apenas enquanto estiver escaneando
+    // Recarrega a página a cada 3 segundos para ver se acabou
     setTimeout(function(){
        window.location.reload();
-    }, 60000);
+    }, 3000);
 </script>
 {% endif %}
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const auditingId = urlParams.get('auditing');
+
+        if (auditingId) {
+            // ... (AQUELE CÓDIGO DO FETCH QUE JÁ ESTÁ FUNCIONANDO) ...
+            // Pode manter exatamente como você já salvou.
+             console.log("Monitorando Audit ID:", auditingId);
+            
+            // ... resto do código ...
+            const alertBox = document.createElement("div");
+             // ... etc ...
+             
+            const interval = setInterval(function() {
+                fetch(`/api/status/${auditingId}`)
+                // ... etc ...
+            }, 1000);
+        }
+    });
+</script>
+
+
+
+
+
+<script>
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Verifica se a URL tem o parâmetro '?auditing=ID'
+        const urlParams = new URLSearchParams(window.location.search);
+        const auditingId = urlParams.get('auditing');
+
+        // Se tiver o parâmetro, ativa o modo "Radar"
+        if (auditingId) {
+            console.log("Monitorando Audit ID:", auditingId);
+            
+            // 2. Cria o aviso visual flutuante (Azul)
+            const alertBox = document.createElement("div");
+            alertBox.innerHTML = `
+                <div style="position: fixed; bottom: 20px; right: 20px; background: #0d1117; color: #58a6ff; padding: 15px; border: 1px solid #1f6feb; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center;">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <div>
+                        <strong>Auditoria em andamento...</strong><br>
+                        <small>Aguarde a atualização automática.</small>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(alertBox);
+
+            // 3. Inicia o Loop de verificação (a cada 1 segundo)
+            const interval = setInterval(function() {
+                fetch(`/api/status/${auditingId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Status recebido:", data.status);
+                        
+                        // SE ACABOU ('done') OU SE O SERVIDOR REINICIOU ('unknown')
+                        // Em ambos os casos, paramos de esperar e atualizamos a tela.
+                        if (data.status === 'done' || data.status === 'unknown') {
+                            
+                            clearInterval(interval); // Para o loop
+                            
+                            // Muda o aviso para Verde (Sucesso)
+                            alertBox.innerHTML = `
+                                <div style="position: fixed; bottom: 20px; right: 20px; background: #0f5323; color: #fff; padding: 15px; border-radius: 8px; z-index: 9999;">
+                                    <i class="fas fa-check-circle me-2"></i> Processamento concluído!
+                                </div>
+                            `;
+                            
+                            // 4. Recarrega a página limpa após 0.5 segundo
+                            setTimeout(() => {
+                                // Remove o ?auditing=... da URL para limpar
+                                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                                window.location.href = cleanUrl; 
+                            }, 500); 
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Erro de conexão:", err);
+                        // Se cair a conexão, força o reload para não travar
+                        clearInterval(interval);
+                        location.reload();
+                    });
+            }, 1000); // Checa a cada 1000ms (1 segundo)
+        }
+    });
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // --- 1. PEGA OS DADOS DO PYTHON ---
+        // Usamos o truque do Number() para o VSCode não reclamar
+        const stats = {
+            critical: Number("{{ stats.critical | default(0) }}"),
+            warning:  Number("{{ stats.warning  | default(0) }}"),
+            safe:     Number("{{ stats.safe     | default(0) }}"),
+            unknown:  Number("{{ stats.unknown  | default(0) }}")
+        };
+
+        // --- 2. CONFIGURA AS CORES (Pode mudar aqui se quiser) ---
+        // Cores vibrantes que funcionam bem em fundo escuro
+        const cores = {
+            texto: '#ffffff',        // COR DA LEGENDA (Branco)
+            critical: '#dc3545',     // Vermelho
+            warning: '#ffc107',      // Amarelo
+            safe: '#198754',         // Verde
+            unknown: '#6c757d'       // Cinza
+        };
+
+        // --- 3. DESENHA O GRÁFICO ---
+        const ctx = document.getElementById('riskChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Crítico', 'Atenção', 'Seguro', 'Desconhecido'],
+                datasets: [{
+                    data: [stats.critical, stats.warning, stats.safe, stats.unknown],
+                    backgroundColor: [cores.critical, cores.warning, cores.safe, cores.unknown],
+                    borderColor: '#212529', // Cor da borda (mesma do fundo da página para separar as fatias)
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: cores.texto, // AQUI QUE MUDA A COR DO TEXTO
+                            font: { size: 14 }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+
 </body>
 </html>
