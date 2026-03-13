@@ -23,7 +23,7 @@
 
 * Python 3.10+
 * `libpcap` (for packet sniffing)
-* Root/Sudo privileges (required for Raw Socket access on Linux)
+* Root/Sudo privileges (required for Raw Socket access on Linux).
 
 ## 🔧 Installation & Setup
 
